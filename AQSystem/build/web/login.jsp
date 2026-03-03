@@ -34,7 +34,7 @@
     </head>
     <body>
         <h1>Login Page</h1>
-        <form action="LoginController" method="POST">
+        <form action="MainController" method="POST">
             User ID <input type="text" name="userID"/></br>
             Password<input type="password" name="password"/></br>
             <input class="button" type="submit" name="action" value="Login"/>
