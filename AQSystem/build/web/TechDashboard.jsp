@@ -12,6 +12,6 @@
         <title>JSP Page</title>
     </head>
     <body>
-        <h1>This is tech Dashboard</h1>
+        <h1>This is techabcd Dashboard</h1>
     </body>
 </html>
