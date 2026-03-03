@@ -33,7 +33,7 @@ public class LoginController extends HttpServlet {
                 session.setAttribute("LOGIN_USER", loginUser);
                 int roleID = loginUser.getRoleID();
                 session.setAttribute("USER_ROLE", roleID);
-                url = "/DashboardController";
+                url = "MainController?action=Dashboard"
             } else {
                 request.setAttribute("ERROR", "Incorrect userID or Password");
             }
@@ -69,3 +69,4 @@ public class LoginController extends HttpServlet {
         processRequest(request, response);
     }
 }
+
