@@ -1,64 +1,98 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package controller;
 
 import java.io.IOException;
 import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import model.AlertActionDAO;
 import model.AlertActionDTO;
 import model.AlertDAO;
 import model.UserDTO;
 
-/**
- *
- * @author Admin
- */
-public class AlertController {
+@WebServlet(name = "AlertController", urlPatterns = {"/AlertController"})
+public class AlertController extends HttpServlet {
 
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+    private static final String LOGIN = "login.jsp";
+    private static final String DASHBOARD = "adminDashboard.jsp";
+
+    protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        response.setContentType("text/html;charset=UTF-8");
+        
+        String referer = request.getHeader("Referer");
+        String url = (referer != null) ? referer : DASHBOARD;
 
-        long alertId = Long.parseLong(request.getParameter("alertId"));
-        String action = request.getParameter("action"); // Giá trị "ack" hoặc "close"
-        String note = request.getParameter("note"); // Lấy ghi chú từ giao diện (nếu có)
+        try {
+            // 1. Lấy tham số từ Request
+            String alertIdRaw = request.getParameter("alertId");
+            String action = request.getParameter("action");
+            String note = request.getParameter("note");
 
-        UserDTO loginUser = (UserDTO) request.getSession().getAttribute("LOGIN_USER");
-        int actorId = loginUser.getUserID();
+            if (alertIdRaw == null || action == null) {
+                url = DASHBOARD;
+            } else {
+                long alertId = Long.parseLong(alertIdRaw);
 
-        AlertDAO alertDao = new AlertDAO(); // 
-        AlertActionDAO actionDao = new AlertActionDAO(); // 
+                // 2. Kiểm tra Session người dùng
+                HttpSession session = request.getSession();
+                UserDTO loginUser = (UserDTO) session.getAttribute("LOGIN_USER");
+                
+                if (loginUser == null) {
+                    url = LOGIN;
+                } else {
+                    int actorId = loginUser.getUserID();
 
-        String actionType = "";
-        String statusToUpdate = "";
+                    // 3. Khởi tạo DAO
+                    AlertDAO alertDao = new AlertDAO();
+                    AlertActionDAO actionDao = new AlertActionDAO();
 
-        if ("ack".equals(action)) {
-            actionType = "ACKNOWLEDGE";
-            statusToUpdate = "Acknowledged";
-        } else if ("close".equals(action)) {
-            actionType = "CLOSE";
-            statusToUpdate = "Closed";
+                    String actionType = "";
+                    String statusToUpdate = "";
+
+                    // 4. Xác định loại hành động
+                    if ("ack".equals(action)) {
+                        actionType = "ACKNOWLEDGE";
+                        statusToUpdate = "Acknowledged";
+                    } else if ("close".equals(action)) {
+                        actionType = "CLOSE";
+                        statusToUpdate = "Closed";
+                    }
+
+                    // 5. Thực thi logic nghiệp vụ
+                    boolean isUpdated = alertDao.updateAlertStatus((int) alertId, statusToUpdate);
+
+                    if (isUpdated) {
+                        AlertActionDTO logEntry = new AlertActionDTO(
+                                0,
+                                alertId,
+                                actorId,
+                                actionType,
+                                (note == null || note.isEmpty()) ? "No note provided" : note,
+                                java.time.LocalDateTime.now()
+                        );
+                        actionDao.insertAlertAction(logEntry);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log("Error at AlertController: " + e.toString());
+        } finally {
+            request.getRequestDispatcher(url).forward(request, response);
         }
-
-        boolean isUpdated = alertDao.updateAlertStatus((int) alertId, statusToUpdate);
-
-        if (isUpdated) {
-            AlertActionDTO logEntry = new AlertActionDTO(
-                    0,
-                    alertId,
-                    actorId,
-                    actionType,
-                    (note == null || note.isEmpty()) ? "No note provided" : note,
-                    java.time.LocalDateTime.now()
-            );
-            actionDao.insertAlertAction(logEntry);
-        }
-
-        response.sendRedirect(request.getHeader("Referer"));
     }
 
-}
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        processRequest(request, response);
+    }
 
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        processRequest(request, response);
+    }
+}
