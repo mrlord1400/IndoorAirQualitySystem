@@ -23,7 +23,7 @@ public class MainController extends HttpServlet {
     private static final String LOGIN="Login";
     private static final String LOGIN_CONTROLLER="LoginController";
     private static final String ALERT="Alert";
-    private static final String ALERT_CONTROLLER="AlertControlller";
+    private static final String ALERT_CONTROLLER="AlertController";
     private static final String DASHBOARD="Dashboard";
     private static final String DASHBOARD_CONTROLLER="DashboardController";
     private static final String READING="Reading";
