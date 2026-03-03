@@ -12,7 +12,6 @@ import model.AlertActionDTO;
 import model.AlertDAO;
 import model.UserDTO;
 
-@WebServlet(name = "AlertController", urlPatterns = {"/AlertController"})
 public class AlertController extends HttpServlet {
 
     private static final String LOGIN = "login.jsp";
@@ -96,3 +95,4 @@ public class AlertController extends HttpServlet {
         processRequest(request, response);
     }
 }
+
