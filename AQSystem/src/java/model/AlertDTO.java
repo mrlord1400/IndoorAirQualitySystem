@@ -10,6 +10,9 @@ import java.time.LocalDateTime;
  *
  * @author Admin
  */
+public AlertDTO() {
+}
+
 public class AlertDTO {
     private long alertID;
     private int roomID;
@@ -147,3 +150,4 @@ public class AlertDTO {
     
     
 }
+
