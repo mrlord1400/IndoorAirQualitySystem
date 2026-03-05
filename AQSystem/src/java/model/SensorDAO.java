@@ -39,5 +39,40 @@ public class SensorDAO {
         }
         return list;
     }
+
+
+    // Lấy toàn bộ danh sách cảm biến đang hoạt động để chia luồng (Thread)
+    public List<SensorDTO> getAllSensors() {
+        List<SensorDTO> list = new ArrayList<>();
+        String sql = "SELECT * FROM Sensor WHERE status = 1"; // Chỉ lấy sensor active
+
+        try (Connection conn = DBUtils.getConnection()) {
+            if (conn != null) {
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery();
+
+                while (rs.next()) {
+                    // Chuyển đổi dữ liệu từ SQL sang đối tượng SensorDTO
+                    SensorDTO dto = new SensorDTO(
+                            rs.getInt("sensor_id"),
+                            rs.getInt("room_id"),
+                            rs.getString("serial_no"),
+                            rs.getString("model"),
+                            rs.getBoolean("status"),
+                            rs.getTimestamp("installed_at").toLocalDateTime(),
+
+                            rs.getTimestamp("last_seen_ts") != null 
+                                ? rs.getTimestamp("last_seen_ts").toLocalDateTime() : null
+                    );
+                    list.add(dto);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+    
 } 
+
 
