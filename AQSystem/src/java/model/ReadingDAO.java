@@ -60,4 +60,29 @@ public class ReadingDAO {
         }
         return list;
     }
+
+    // Lấy N bản ghi gần nhất để kiểm tra xem có vi phạm liên tục không
+    public List<ReadingDTO> getRecentReadings(int roomID, int pollutantID, int limit) {
+        List<ReadingDTO> list = new ArrayList<>();
+        // Sử dụng JOIN với bảng Sensor để lọc theo RoomID
+        String sql = "SELECT TOP (?) r.* FROM Reading r " +
+                     "JOIN Sensor s ON r.sensor_id = s.sensor_id " +
+                     "WHERE s.room_id = ? AND r.pollutant_id = ? " +
+                     "ORDER BY r.ts DESC";
+        try (Connection conn = DBUtils.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, limit);
+            ps.setInt(2, roomID);
+            ps.setInt(3, pollutantID);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                LocalDateTime ts = rs.getTimestamp("ts").toLocalDateTime();
+                list.add(new ReadingDTO(rs.getLong("reading_id"), rs.getInt("sensor_id"), 
+                                     rs.getInt("pollutant_id"), ts, rs.getDouble("value"), 
+                                     rs.getString("quality_flag"), null));
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return list;
+    }
 }
+
