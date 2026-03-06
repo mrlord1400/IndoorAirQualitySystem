@@ -1,91 +1,51 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package model;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 
-/**
- *
- * @author Admin
- */
 public class RoomDTO {
-    private int roomID;
-    private String code;
-    private String name;
-    private String type;
-    private String location;
-    private boolean status;
-    private LocalDateTime createdAt;
+    private int roomId; //
+    private String code; //
+    private String name; //
+    private String roomType; //
+    private String location; //
+    private boolean status; //
+    private Date createdAt; //
 
-    public RoomDTO(int roomID, String code, String name, String type, String location, boolean status, LocalDateTime createdAt) {
-        this.roomID = roomID;
+    public RoomDTO() {}
+
+    public RoomDTO(int roomId, String code, String name, String roomType, String location, boolean status) {
+        this.roomId = roomId;
         this.code = code;
         this.name = name;
-        this.type = type;
+        this.roomType = roomType;
         this.location = location;
         this.status = status;
-        this.createdAt = createdAt;
     }
 
-    
-
-    public int getRoomID() {
-        return roomID;
+    RoomDTO(int aInt, String string, String string0, String string1, String string2, boolean aBoolean, LocalDateTime toLocalDateTime) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 
-    public void setRoomID(int roomID) {
-        this.roomID = roomID;
+    // Getters và Setters
+    public int getRoomId() { return roomId; }
+    public void setRoomId(int roomId) { this.roomId = roomId; }
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getRoomType() { return roomType; }
+    public void setRoomType(String roomType) { this.roomType = roomType; }
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
+    public boolean isStatus() { return status; }
+    public void setStatus(boolean status) { this.status = status; }
+
+    String getType() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 
-    public String getCode() {
-        return code;
+    int getRoomID() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getLocation() {
-        return location;
-    }
-
-    public void setLocation(String location) {
-        this.location = location;
-    }
-
-    public boolean isStatus() {
-        return status;
-    }
-
-    public void setStatus(boolean status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-    
-    
 }
