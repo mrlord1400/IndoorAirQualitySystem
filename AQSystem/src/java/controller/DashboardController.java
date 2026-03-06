@@ -24,6 +24,11 @@ public class DashboardController extends HttpServlet {
             roleID = (int) session.getAttribute("USER_ROLE");
             if (roleID != 0) {
                 if (roleID == 1){
+                   AdminDAO adminDao = new AdminDAO();
+                    Map<String, Integer> stats = adminDao.getDashboardStats();
+
+                    // Đẩy dữ liệu thống kê sang trang JSP
+                    request.setAttribute("STATS", stats);
                     url = "adminDashboard.jsp";
                 } else if (roleID == 2){
                     url = "LMDashboard.jsp";
@@ -66,3 +71,4 @@ public class DashboardController extends HttpServlet {
         processRequest(request, response);
     }
 }
+
