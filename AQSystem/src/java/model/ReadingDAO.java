@@ -35,7 +35,6 @@ public class ReadingDAO {
         }
         return false;
     }
-    
 
     public List<ReadingDTO> getAllReadings() {
         List<ReadingDTO> list = new ArrayList<>();
@@ -84,5 +83,58 @@ public class ReadingDAO {
         } catch (Exception e) { e.printStackTrace(); }
         return list;
     }
-}
 
+    /* ===========================================================
+       BỔ SUNG: CHỨC NĂNG ADVANCED SEARCH (KHÔNG THAY ĐỔI CODE CŨ)
+       =========================================================== */
+    
+    /**
+     * Thực hiện tìm kiếm nâng cao kết hợp nhiều tiêu chí lọc.
+     * Đáp ứng mục tiêu Giai đoạn 3 của đồ án[cite: 109].
+     */
+    public List<ReadingDTO> searchAdvanced(Integer roomID, Integer sensorID, Integer pollutantID, String fromDate, String toDate) {
+        List<ReadingDTO> list = new ArrayList<>();
+        // Sử dụng JOIN để lọc theo RoomID vì bảng Reading không chứa room_id trực tiếp
+        StringBuilder sql = new StringBuilder(
+            "SELECT r.* FROM Reading r " +
+            "JOIN Sensor s ON r.sensor_id = s.sensor_id " +
+            "WHERE 1=1"
+        );
+
+        // Cộng dồn điều kiện tìm kiếm động
+        if (roomID != null) sql.append(" AND s.room_id = ?");
+        if (sensorID != null) sql.append(" AND r.sensor_id = ?");
+        if (pollutantID != null) sql.append(" AND r.pollutant_id = ?");
+        if (fromDate != null && !fromDate.isEmpty()) sql.append(" AND r.ts >= ?");
+        if (toDate != null && !toDate.isEmpty()) sql.append(" AND r.ts <= ?");
+
+        sql.append(" ORDER BY r.ts DESC");
+
+        try (Connection conn = DBUtils.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            
+            int paramIdx = 1;
+            if (roomID != null) ps.setInt(paramIdx++, roomID);
+            if (sensorID != null) ps.setInt(paramIdx++, sensorID);
+            if (pollutantID != null) ps.setInt(paramIdx++, pollutantID);
+            if (fromDate != null && !fromDate.isEmpty()) ps.setString(paramIdx++, fromDate);
+            if (toDate != null && !toDate.isEmpty()) ps.setString(paramIdx++, toDate);
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(new ReadingDTO(
+                    rs.getLong("reading_id"),
+                    rs.getInt("sensor_id"),
+                    rs.getInt("pollutant_id"),
+                    rs.getTimestamp("ts").toLocalDateTime(),
+                    rs.getDouble("value"),
+                    rs.getString("quality_flag"),
+                    rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null
+                ));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+}
