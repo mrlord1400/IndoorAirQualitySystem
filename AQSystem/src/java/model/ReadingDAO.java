@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import utils.DBUtils;
@@ -84,24 +85,14 @@ public class ReadingDAO {
         return list;
     }
 
-    /* ===========================================================
-       BỔ SUNG: CHỨC NĂNG ADVANCED SEARCH (KHÔNG THAY ĐỔI CODE CŨ)
-       =========================================================== */
-    
-    /**
-     * Thực hiện tìm kiếm nâng cao kết hợp nhiều tiêu chí lọc.
-     * Đáp ứng mục tiêu Giai đoạn 3 của đồ án[cite: 109].
-     */
     public List<ReadingDTO> searchAdvanced(Integer roomID, Integer sensorID, Integer pollutantID, String fromDate, String toDate) {
         List<ReadingDTO> list = new ArrayList<>();
-        // Sử dụng JOIN để lọc theo RoomID vì bảng Reading không chứa room_id trực tiếp
         StringBuilder sql = new StringBuilder(
             "SELECT r.* FROM Reading r " +
             "JOIN Sensor s ON r.sensor_id = s.sensor_id " +
             "WHERE 1=1"
         );
 
-        // Cộng dồn điều kiện tìm kiếm động
         if (roomID != null) sql.append(" AND s.room_id = ?");
         if (sensorID != null) sql.append(" AND r.sensor_id = ?");
         if (pollutantID != null) sql.append(" AND r.pollutant_id = ?");
@@ -135,6 +126,78 @@ public class ReadingDAO {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        return list;
+    }
+
+    /* ===========================================================
+       CẬP NHẬT MỚI: HỖ TRỢ PHÂN TRANG (PAGINATION)
+       =========================================================== */
+
+    /**
+     * Đếm tổng số bản ghi dựa trên bộ lọc để tính toán tổng số trang.
+     */
+    public int getTotalRecords(Integer roomID, Integer pollutantID, String fromDate, String toDate) {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM Reading r JOIN Sensor s ON r.sensor_id = s.sensor_id WHERE 1=1");
+        
+        if (roomID != null) sql.append(" AND s.room_id = ?");
+        if (pollutantID != null) sql.append(" AND r.pollutant_id = ?");
+        if (fromDate != null && !fromDate.isEmpty()) sql.append(" AND r.ts >= ?");
+        if (toDate != null && !toDate.isEmpty()) sql.append(" AND r.ts <= ?");
+
+        try (Connection conn = DBUtils.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            int idx = 1;
+            if (roomID != null) ps.setInt(idx++, roomID);
+            if (pollutantID != null) ps.setInt(idx++, pollutantID);
+            if (fromDate != null && !fromDate.isEmpty()) ps.setString(idx++, fromDate);
+            if (toDate != null && !toDate.isEmpty()) ps.setString(idx++, toDate);
+            
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt(1);
+        } catch (Exception e) { e.printStackTrace(); }
+        return 0;
+    }
+
+    /**
+     * Tìm kiếm nâng cao kết hợp phân trang sử dụng OFFSET/FETCH của SQL Server.
+     */
+    public List<ReadingDTO> searchAdvancedWithPaging(Integer roomID, Integer pollutantID, String fromDate, String toDate, int pageIndex, int pageSize) {
+        List<ReadingDTO> list = new ArrayList<>();
+        int offset = (pageIndex - 1) * pageSize;
+        
+        StringBuilder sql = new StringBuilder("SELECT r.* FROM Reading r JOIN Sensor s ON r.sensor_id = s.sensor_id WHERE 1=1");
+        
+        if (roomID != null) sql.append(" AND s.room_id = ?");
+        if (pollutantID != null) sql.append(" AND r.pollutant_id = ?");
+        if (fromDate != null && !fromDate.isEmpty()) sql.append(" AND r.ts >= ?");
+        if (toDate != null && !toDate.isEmpty()) sql.append(" AND r.ts <= ?");
+        
+        // Sử dụng OFFSET và FETCH để chỉ lấy dữ liệu cần thiết cho trang hiện tại
+        sql.append(" ORDER BY r.ts DESC OFFSET ? ROWS FETCH NEXT ? ROWS ONLY");
+
+        try (Connection conn = DBUtils.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            int idx = 1;
+            if (roomID != null) ps.setInt(idx++, roomID);
+            if (pollutantID != null) ps.setInt(idx++, pollutantID);
+            if (fromDate != null && !fromDate.isEmpty()) ps.setString(idx++, fromDate);
+            if (toDate != null && !toDate.isEmpty()) ps.setString(idx++, toDate);
+            ps.setInt(idx++, offset);
+            ps.setInt(idx++, pageSize);
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(new ReadingDTO(
+                    rs.getLong("reading_id"), 
+                    rs.getInt("sensor_id"), 
+                    rs.getInt("pollutant_id"), 
+                    rs.getTimestamp("ts").toLocalDateTime(), 
+                    rs.getDouble("value"), 
+                    rs.getString("quality_flag"), 
+                    rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null
+                ));
+            }
+        } catch (Exception e) { e.printStackTrace(); }
         return list;
     }
 }
