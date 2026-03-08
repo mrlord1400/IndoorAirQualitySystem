@@ -1,52 +1,72 @@
 package controller;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.time.LocalDateTime;
 import java.util.List;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import model.SensorDAO;
 import model.SensorDTO;
+import utils.DBUtils;
 
 @WebServlet(name = "SensorController", urlPatterns = {"/SensorController"})
 public class SensorController extends HttpServlet {
 
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+    private static final String SENSOR_PAGE = "sensor.jsp";
+    private static final String MAIN_SENSOR_CONTROL = "MainController?action=Sensor";
+
+    protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        response.setContentType("text/html;charset=UTF-8");
 
-        HttpSession session = request.getSession();
-        Integer roleID = (Integer) session.getAttribute("USER_ROLE");
+        String subAction = request.getParameter("subAction"); // Lấy subAction
+        SensorDAO dao = new SensorDAO();
+        String url = "sensor.jsp";
+        boolean isRedirect = false;
 
-        // 1. Kiểm tra quyền: Chỉ Technician hoặc Admin mới được vào đây
-        if (roleID == null || (roleID != 3 && roleID != 1)) {
-            request.setAttribute("ERROR", "Bạn không có quyền thực hiện thao tác này!");
-            request.getRequestDispatcher("login.jsp").forward(request, response);
-            return;
-        }
+        try ( Connection conn = DBUtils.getConnection()) {
+            if ("filterByRoom".equals(subAction)) {
+                int roomID = Integer.parseInt(request.getParameter("roomID"));
+                request.setAttribute("SENSOR_LIST", dao.getSensorsByRoom(roomID, conn));
+            } else if ("add".equals(subAction)) {
+                int roomID = Integer.parseInt(request.getParameter("roomID"));
+                String serialNo = request.getParameter("serialNo");
+                String model = request.getParameter("model");
+                boolean status = Boolean.parseBoolean(request.getParameter("status"));
 
-        // 2. Lấy threshold từ request (Technician chỉnh từ giao diện)
-        String thresholdParam = request.getParameter("threshold");
-        int threshold = 30; // Mặc định
+                SensorDTO sensor = new SensorDTO(0, roomID, serialNo, model, status, LocalDateTime.now(), null);
 
-        if (thresholdParam != null && !thresholdParam.isEmpty()) {
-            try {
-                threshold = Integer.parseInt(thresholdParam);
-            } catch (NumberFormatException e) {
-                threshold = 30;
+                if (dao.addSensor(sensor, conn)) {
+                    // Thành công thì nhảy về trang danh sách tổng
+                    response.sendRedirect("MainController?action=Sensor");
+                    isRedirect = true;
+                }
+            } else {
+                // Mặc định load hết
+                request.setAttribute("SENSOR_LIST", dao.getAllSensors(conn));
+            }
+        } catch (Exception e) {
+            log("Error: " + e.getMessage());
+        } finally {
+            if (!isRedirect) {
+                request.getRequestDispatcher(url).forward(request, response);
             }
         }
+    }
 
-        // 3. Xử lý dữ liệu
-        SensorDAO dao = new SensorDAO();
-        List<SensorDTO> inactiveSensors = dao.getInactiveSensors(threshold);
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        processRequest(request, response);
+    }
 
-        // 4. Đẩy dữ liệu ra trang quản lý sensor chuyên biệt
-        request.setAttribute("sensorList", inactiveSensors);
-        request.setAttribute("threshold", threshold);
-
-        request.getRequestDispatcher("sensor.jsp").forward(request, response);
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        processRequest(request, response);
     }
 }
