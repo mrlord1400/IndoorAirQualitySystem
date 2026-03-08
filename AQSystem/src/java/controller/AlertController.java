@@ -12,74 +12,87 @@ import model.AlertActionDTO;
 import model.AlertDAO;
 import model.UserDTO;
 
+/**
+ * AlertController đã được tinh chỉnh để chạy thông qua MainController
+ */
+@WebServlet(name = "AlertController", urlPatterns = {"/AlertController"})
 public class AlertController extends HttpServlet {
-
-    private static final String LOGIN = "login.jsp";
-    private static final String DASHBOARD = "adminDashboard.jsp";
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         response.setContentType("text/html;charset=UTF-8");
-        
+
+        // 1. Kiểm tra Login
+        HttpSession session = request.getSession(false);
+        UserDTO loginUser = (session != null) ? (UserDTO) session.getAttribute("LOGIN_USER") : null;
+
+        if (loginUser == null) {
+            response.sendRedirect("login.jsp");
+            return;
+        }
+
+        // 2. Xác định đích đến mặc định (Dùng cho redirect sau khi xử lý xong)
+        int roleID = loginUser.getRoleID();
+        String defaultDashboard = "login.jsp";
+        if (roleID == 1) {
+            defaultDashboard = "adminDashboard.jsp";
+        } else if (roleID == 2) {
+            defaultDashboard = "LMDashboard.jsp";
+        } else if (roleID == 3) {
+            defaultDashboard = "TechDashboard.jsp";
+        }
+
         String referer = request.getHeader("Referer");
-        String url = (referer != null) ? referer : DASHBOARD;
+        String finalUrl = (referer != null && !referer.isEmpty()) ? referer : defaultDashboard;
 
         try {
-            // 1. Lấy tham số từ Request
+            // Lấy subAction để không trùng với 'action' của MainController
+            String subAction = request.getParameter("subAction");
             String alertIdRaw = request.getParameter("alertId");
-            String action = request.getParameter("action");
             String note = request.getParameter("note");
 
-            if (alertIdRaw == null || action == null) {
-                url = DASHBOARD;
-            } else {
-                long alertId = Long.parseLong(alertIdRaw);
-
-                // 2. Kiểm tra Session người dùng
-                HttpSession session = request.getSession();
-                UserDTO loginUser = (UserDTO) session.getAttribute("LOGIN_USER");
-                
-                if (loginUser == null) {
-                    url = LOGIN;
-                } else {
-                    int actorId = loginUser.getUserID();
-
-                    // 3. Khởi tạo DAO
+            // 3. Phân quyền: Chỉ Admin(1), Manager(2), Tech(3) mới được xử lý
+            if (roleID >= 1 && roleID <= 3) {
+                if (alertIdRaw != null && subAction != null) {
+                    int alertId = Integer.parseInt(alertIdRaw);
                     AlertDAO alertDao = new AlertDAO();
                     AlertActionDAO actionDao = new AlertActionDAO();
 
-                    String actionType = "";
                     String statusToUpdate = "";
+                    String actionLogType = "";
 
-                    // 4. Xác định loại hành động
-                    if ("ack".equals(action)) {
-                        actionType = "ACKNOWLEDGE";
+                    // Xử lý các case của subAction
+                    if ("ack".equals(subAction)) {
                         statusToUpdate = "Acknowledged";
-                    } else if ("close".equals(action)) {
-                        actionType = "CLOSE";
+                        actionLogType = "ACK";
+                    } else if ("close".equals(subAction)) {
                         statusToUpdate = "Closed";
+                        actionLogType = "CLOSE";
                     }
 
-                    // 5. Thực thi logic nghiệp vụ
-                    boolean isUpdated = alertDao.updateAlertStatus((int) alertId, statusToUpdate);
-
-                    if (isUpdated) {
-                        AlertActionDTO logEntry = new AlertActionDTO(
-                                0,
-                                alertId,
-                                actorId,
-                                actionType,
-                                (note == null || note.isEmpty()) ? "No note provided" : note,
-                                java.time.LocalDateTime.now()
-                        );
-                        actionDao.insertAlertAction(logEntry);
+                    if (!statusToUpdate.isEmpty()) {
+                        boolean isUpdated = alertDao.updateAlertStatus(alertId, statusToUpdate);
+                        if (isUpdated) {
+                            // Ghi log vào database
+                            AlertActionDTO log = new AlertActionDTO(
+                                    0,
+                                    (long) alertId,
+                                    loginUser.getUserID(),
+                                    actionLogType,
+                                    (note != null && !note.isEmpty() ? note : "Processed via " + actionLogType),
+                                    java.time.LocalDateTime.now()
+                            );
+                            actionDao.insertAlertAction(log);
+                            session.setAttribute("MSG_SUCCESS", "Successfully " + actionLogType.toLowerCase() + "ed alert #" + alertId);
+                        }
                     }
                 }
             }
         } catch (Exception e) {
             log("Error at AlertController: " + e.toString());
         } finally {
-            request.getRequestDispatcher(url).forward(request, response);
+            // Sau khi xử lý dữ liệu xong (Update/Insert), nên dùng Redirect để tránh trùng lặp dữ liệu khi F5
+            response.sendRedirect(finalUrl);
         }
     }
 
@@ -95,4 +108,3 @@ public class AlertController extends HttpServlet {
         processRequest(request, response);
     }
 }
-
