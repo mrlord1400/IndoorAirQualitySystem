@@ -2,7 +2,7 @@ package controller;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-/*package controller;
+package controller;
 
 import model.ReadingDAO;
 import model.ReadingDTO;
@@ -173,7 +173,8 @@ public class ReadingController extends HttpServlet {
     }
 }
 
-*/
+
+
 
 
 
